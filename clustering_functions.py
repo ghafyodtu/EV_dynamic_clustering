@@ -1,6 +1,14 @@
-from my_imports import pd
+from my_imports import pd, np, plt, sns, StandardScaler
+import copy
+import pytz
 from clustering_class import KmeansC, plot_evaluation_metrics
-
+from functions_kde_js import (compute_joint_kdes, compute_js_divergence, categorize_count,
+                              cluster_similarity_analysis,
+                              compute_js_divergence_mD, create_months,
+                              read_scale_monthly_kde_mD, read_scale_monthly_kde,
+                              create_joint_similarity_matrix, find_mlcv_bandwidth,
+                              run_md_sensitivity_analysis, run_cluster_threshold_sensitivity,
+                              fit_cluster_kdes_with_mlcv_bandwidth)
 
 def primary_interval_filter(df1, start_date="01-2023", end_date="02-2023"):
     """
@@ -178,3 +186,453 @@ def clustering_process(x_train, scaler, current_month, metric):
     km_labels = x_train["km_labels"]
     x_train = x_train.drop(columns=["km_labels"])
     return x_train, km_labels, kmeans
+
+
+def initialize_state(global_start_date):
+    """
+    Create all dictionaries/lists used by the streaming clustering process.
+    """
+
+    return {
+        "cluster_objects_pool": {},
+        "monthly_kde": {},
+        "monthly_kde_mD": {},
+        "cluster_kdes": {},
+        "reference_clusters": {},
+        "ref_month": global_start_date,
+        "stream_order": [],
+        "kmeans_objects_dict": {},
+        "similarity_matrix": [],
+        "js_per_feature_mat": [],
+        "js_mat_time_order": [],
+        "js_md_per_month": {},
+        "all_monthly_kde": {},
+        "all_clusters_kde": {},
+    }
+
+
+def rename_cluster_keys(cluster_kdes_for_month, month):
+    """
+    Rename cluster labels so that they contain the month.
+
+    Example:
+        0 -> "01-2023_0"
+        1 -> "01-2023_1"
+    """
+
+    return {
+        f"{month}_{cluster_id}": kde_value
+        for cluster_id, kde_value in cluster_kdes_for_month.items()
+    }
+
+
+def load_current_month_kdes(state, scaler, current_month, next_month, bandwidth):
+    """
+    Load scaled monthly data and compute:
+    1. feature-wise KDEs
+    2. multidimensional KDE
+    """
+
+    x_train, kde_1d = read_scale_monthly_kde(
+        scaler,
+        current_month,
+        next_month,
+        bandwidth,
+    )
+
+    _, kde_mD = read_scale_monthly_kde_mD(
+        scaler,
+        current_month,
+        next_month,
+        bandwidth,
+    )
+
+    state["monthly_kde"][current_month] = kde_1d
+    state["monthly_kde_mD"][current_month] = kde_mD
+    state["all_monthly_kde"][current_month] = kde_1d.copy()
+
+    return x_train
+
+
+def compute_featurewise_js(state, current_month, ref_month, sample_size):
+    """
+    Compute JS divergence feature-by-feature between current month
+    and the current reference month.
+    """
+
+    js_values = []
+
+    n_features = len(state["monthly_kde"][current_month])
+
+    for feature_idx in range(n_features):
+        js = compute_js_divergence(
+            state["monthly_kde"][current_month][feature_idx],
+            state["monthly_kde"][ref_month][feature_idx],
+            sample_size,
+        )
+
+        js_values.append(np.round(js, 5))
+
+    return js_values
+
+
+def store_featurewise_js(state, current_month, js_values):
+    """
+    Store feature-wise JS divergence results in time order.
+    """
+
+    state["js_per_feature_mat"].append(js_values)
+    state["js_mat_time_order"].append(current_month)
+
+
+def update_all_clusters_kde(state, month):
+    """
+    Save cluster KDE objects from a month into the global cluster history.
+    """
+
+    state["all_clusters_kde"].update({
+        cluster_name: kde_info[0]
+        for cluster_name, kde_info in state["cluster_kdes"][month].items()
+    })
+
+
+def update_cluster_objects_pool(state, month):
+    """
+    Add cluster KDE objects from a month to the global comparison pool.
+    """
+
+    state["cluster_objects_pool"].update({
+        cluster_name: kde_info[0]
+        for cluster_name, kde_info in state["cluster_kdes"][month].items()
+    })
+
+
+def create_new_month_clustering(state, x_train, scaler, current_month, metric):
+    """
+    Create a new clustering model for the current month.
+
+    This is used when the current month is not similar enough to:
+    1. the reference month
+    2. any previous stored month
+    """
+
+    x_train, km_labels, kmeans = clustering_process(
+        x_train,
+        scaler,
+        current_month,
+        metric,
+    )
+
+    # Important:
+    # Recompute cluster bandwidth for this specific month.
+    # Do not reuse h_cluster from the first month.
+    cluster_bandwidth = fit_cluster_kdes_with_mlcv_bandwidth(
+        x_train=x_train,
+        km_labels=km_labels,
+    )
+
+    cluster_kdes_for_month = compute_joint_kdes(
+        x_train,
+        bandwidth=cluster_bandwidth,
+        labels=km_labels,
+    )
+
+    cluster_kdes_for_month = rename_cluster_keys(
+        cluster_kdes_for_month,
+        current_month,
+    )
+
+    state["cluster_kdes"][current_month] = cluster_kdes_for_month
+    state["kmeans_objects_dict"][current_month] = kmeans
+    state["ref_month"] = current_month
+    state["stream_order"].append(current_month)
+
+    update_all_clusters_kde(state, current_month)
+
+    return x_train
+
+
+def reuse_existing_clusters(state, x_train, scaler, current_month, ref_month):
+    """
+    Reuse cluster structure from a reference month.
+
+    This happens when the current month is similar enough to an already
+    known month.
+    """
+
+    state["cluster_kdes"][current_month] = copy.deepcopy(
+        state["cluster_kdes"][ref_month]
+    )
+
+    x_train, state["cluster_kdes"] = categorize_count(
+        x_train,
+        state["kmeans_objects_dict"],
+        state["cluster_kdes"],
+        ref_month,
+        current_month,
+        scaler,
+    )
+
+    # Remove current month from active monthly KDE dictionaries because
+    # this month is represented by the selected reference month.
+    state["monthly_kde"].pop(current_month, None)
+    state["monthly_kde_mD"].pop(current_month, None)
+
+    state["stream_order"].append(ref_month)
+
+    return x_train
+
+
+def find_best_similar_previous_month(
+    state,
+    current_month,
+    ref_month,
+    js_lim_month,
+    sample_size,
+):
+    """
+    Search previous months and find the most similar one to the current month.
+
+    Returns:
+        best_month, best_js
+
+    If no previous month is similar enough:
+        None, None
+    """
+
+    candidates = {}
+
+    for previous_month in state["monthly_kde_mD"]:
+        if previous_month in {current_month, ref_month}:
+            continue
+
+        js = compute_js_divergence_mD(
+            state["monthly_kde_mD"][current_month],
+            state["monthly_kde_mD"][previous_month],
+            sample_size,
+        )
+
+        if js < js_lim_month:
+            candidates[previous_month] = js
+
+    if not candidates:
+        return None, None
+
+    best_month = min(candidates, key=candidates.get)
+    best_js = candidates[best_month]
+
+    return best_month, best_js
+
+
+def compare_new_clusters_with_pool(
+    state,
+    current_month,
+    js_lim_cluster,
+    sample_size,
+):
+    """
+    Compare newly created clusters with the existing cluster pool.
+    Then update the pool and cluster KDE dictionary.
+    """
+
+    current_cluster_kdes = {
+        cluster_name: kde_info[0]
+        for cluster_name, kde_info in state["cluster_kdes"][current_month].items()
+    }
+
+    current_cluster_kdes = copy.deepcopy(current_cluster_kdes)
+
+    state["similarity_matrix"] = create_joint_similarity_matrix(
+        state["cluster_objects_pool"],
+        current_cluster_kdes,
+        sample_size,
+    )
+
+    state["cluster_objects_pool"], state["cluster_kdes"] = cluster_similarity_analysis(
+        state["similarity_matrix"],
+        state["cluster_objects_pool"],
+        state["cluster_kdes"],
+        js_lim_cluster,
+        current_month,
+    )
+
+
+# ---------------------------------------------------------------------
+# Main pipeline
+# ---------------------------------------------------------------------
+
+def run_dynamic_clustering(
+    global_start_date,
+    global_end_date,
+    metric="silhouette",
+    js_lim_month=0.18,
+    js_lim_cluster=0.18,
+    js_sample_size=1000,
+):
+    """
+    Main dynamic clustering pipeline.
+
+    Logic:
+    1. Start with the first month.
+    2. Fit scaler and monthly KDE bandwidth.
+    3. Cluster the first month.
+    4. For every later month:
+        - compare it with the current reference month
+        - if similar, reuse reference clusters
+        - otherwise, search previous months
+        - if no similar previous month exists, create new clusters
+    """
+
+    months = create_months(global_start_date, global_end_date)
+
+    state = initialize_state(global_start_date)
+
+    scaler = StandardScaler()
+    state["scaler"] = scaler
+    # Fit scaler and bandwidth using the first month pair.
+    first_x_train = load_scale_filter_data(
+        start_m=months[0],
+        end_m=months[1],
+    )
+
+    monthly_bandwidth, _, _ = find_mlcv_bandwidth(first_x_train)
+
+    scaler.fit(first_x_train)
+
+    for idx in range(len(months) - 1):
+        current_month = months[idx]
+        next_month = months[idx + 1]
+
+        print("current_month_pair:", current_month, next_month)
+
+        x_train = load_current_month_kdes(
+            state=state,
+            scaler=scaler,
+            current_month=current_month,
+            next_month=next_month,
+            bandwidth=monthly_bandwidth,
+        )
+
+        # -------------------------------------------------------------
+        # First month: create the initial reference clustering
+        # -------------------------------------------------------------
+        if current_month == global_start_date:
+            print("Analyzing first month in the data.")
+
+            x_train = create_new_month_clustering(
+                state=state,
+                x_train=x_train,
+                scaler=scaler,
+                current_month=current_month,
+                metric=metric,
+            )
+
+            # First month initializes the global cluster pool.
+            update_cluster_objects_pool(state, current_month)
+
+            continue
+
+        # -------------------------------------------------------------
+        # Compare current month with current reference month
+        # -------------------------------------------------------------
+        ref_month = state["ref_month"]
+
+        js_mD = compute_js_divergence_mD(
+            state["monthly_kde_mD"][current_month],
+            state["monthly_kde_mD"][ref_month],
+            js_sample_size,
+        )
+
+        state["js_md_per_month"][current_month] = js_mD
+
+        js_featurewise = compute_featurewise_js(
+            state=state,
+            current_month=current_month,
+            ref_month=ref_month,
+            sample_size=js_sample_size,
+        )
+
+        store_featurewise_js(
+            state=state,
+            current_month=current_month,
+            js_values=js_featurewise,
+        )
+
+        # -------------------------------------------------------------
+        # Case 1:
+        # Current month is similar to the reference month
+        # -------------------------------------------------------------
+        if js_mD < js_lim_month:
+            print(
+                f"{current_month} is similar to reference month {ref_month}. "
+                f"JS mD = {js_mD:.5f}"
+            )
+
+            x_train = reuse_existing_clusters(
+                state=state,
+                x_train=x_train,
+                scaler=scaler,
+                current_month=current_month,
+                ref_month=ref_month,
+            )
+
+            continue
+
+        # -------------------------------------------------------------
+        # Case 2:
+        # Current month is not similar to the reference month.
+        # Search for another similar previous month.
+        # -------------------------------------------------------------
+        best_month, best_js = find_best_similar_previous_month(
+            state=state,
+            current_month=current_month,
+            ref_month=ref_month,
+            js_lim_month=js_lim_month,
+            sample_size=js_sample_size,
+        )
+
+        if best_month is not None:
+            print(
+                f"The most similar previous data batch is {best_month}. "
+                f"JS mD = {best_js:.5f}"
+            )
+
+            state["ref_month"] = best_month
+
+            x_train = reuse_existing_clusters(
+                state=state,
+                x_train=x_train,
+                scaler=scaler,
+                current_month=current_month,
+                ref_month=best_month,
+            )
+
+            continue
+
+        # -------------------------------------------------------------
+        # Case 3:
+        # Current month is different from all known previous months.
+        # Create a new clustering model.
+        # -------------------------------------------------------------
+        print(
+            f"{current_month} is a new pattern. "
+            f"JS mD = {js_mD:.5f}, threshold = {js_lim_month}"
+        )
+
+        x_train = create_new_month_clustering(
+            state=state,
+            x_train=x_train,
+            scaler=scaler,
+            current_month=current_month,
+            metric=metric,
+        )
+
+        compare_new_clusters_with_pool(
+            state=state,
+            current_month=current_month,
+            js_lim_cluster=js_lim_cluster,
+            sample_size=js_sample_size,
+        )
+
+    return state
+

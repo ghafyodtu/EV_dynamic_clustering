@@ -207,7 +207,6 @@ def cluster_similarity_analysis(similarity_matrix, cluster_objects_pool_, cluste
     similarity_matrix = modified_matrix
     indexes = np.where(similarity_matrix < js_lim_cluster)
     indexes = list(zip(indexes[0], indexes[1]))
-    print(indexes)
     keys_list_cluster_pool = list(cluster_objects_pool_.keys())
     keys_list_current_month = list(cluster_kdes_[current_month].keys())
     placement_list = keys_list_current_month.copy()
@@ -514,10 +513,6 @@ def run_md_sensitivity_analysis(
 
     return results
 
-import copy
-import numpy as np
-import matplotlib.pyplot as plt
-
 
 def run_cluster_threshold_sensitivity(
         all_clusters_kde,
@@ -637,7 +632,7 @@ def fit_cluster_kdes_with_mlcv_bandwidth(
         x_train,
         km_labels,
         label_col="labels",
-        n_eff_max=4500,
+        n_eff_max=10000,
         bandwidths=None,
         cv=5,
         kernel="gaussian",
