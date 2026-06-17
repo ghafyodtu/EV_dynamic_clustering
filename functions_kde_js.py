@@ -1,4 +1,5 @@
 from my_imports import pd
+import copy
 
 
 def compute_joint_kdes(data, bandwidth, labels=None):
@@ -158,8 +159,8 @@ def create_months(start, end):
 
 
 def read_scale_monthly_kde(scaler, m1, m2, band_width_):
-    from clustering_functions import load_scale_filter_data
-    x_train = load_scale_filter_data(start_m=m1, end_m=m2)
+    from clustering_functions import load_filter_data
+    x_train = load_filter_data(start_m=m1, end_m=m2)
     x_train1 = scaler.transform(x_train)
     x_train = pd.DataFrame(x_train1, columns=x_train.columns)
     # create kde of month i
@@ -168,8 +169,8 @@ def read_scale_monthly_kde(scaler, m1, m2, band_width_):
 
 
 def read_scale_monthly_kde_mD(scaler, m1, m2, band_width_):
-    from clustering_functions import load_scale_filter_data
-    x_train = load_scale_filter_data(start_m=m1, end_m=m2)
+    from clustering_functions import load_filter_data
+    x_train = load_filter_data(start_m=m1, end_m=m2)
     x_train1 = scaler.transform(x_train)
     x_train = pd.DataFrame(x_train1, columns=x_train.columns)
     # create kde of month i
@@ -387,7 +388,7 @@ def run_md_sensitivity_analysis(
         - "details_per_threshold"
     """
     from my_imports import StandardScaler, np
-    from clustering_functions import load_scale_filter_data
+    from clustering_functions import load_filter_data
     if js_thr_val_list is None:
         js_thr_val_list = [round(x, 2) for x in np.arange(0.06, 0.26, 0.02)]
 
@@ -407,7 +408,7 @@ def run_md_sensitivity_analysis(
         number_of_drifts = 0
         # Fit scaler on first month interval
         scaler = StandardScaler()
-        x_train_first = load_scale_filter_data(
+        x_train_first = load_filter_data(
             start_m=months[0],
             end_m=months[1]
         )
@@ -547,7 +548,7 @@ def run_cluster_threshold_sensitivity(
         - "clusters"
         - "details_per_threshold"
     """
-
+    from my_imports import np, plt
     if thresholds is None:
         thresholds = [round(x, 2) for x in np.arange(0.10, 0.25, 0.01)]
 

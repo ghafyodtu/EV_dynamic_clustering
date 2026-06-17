@@ -150,7 +150,7 @@ def feature_scaling(df1, cols1_):
     return df1
 
 
-def load_scale_filter_data(start_m, end_m):
+def load_filter_data(start_m, end_m):
     cols = ['plugin_duration', "plugin_hour_sine", "plugin_hour_cosine", "energy", "delay"]
     cols_ = [col + "_sc" for col in cols]
     dfo = pd.read_parquet("Data/EV_data_full_v2.parquet")
@@ -490,7 +490,7 @@ def run_dynamic_clustering(
     scaler = StandardScaler()
     state["scaler"] = scaler
     # Fit scaler and bandwidth using the first month pair.
-    first_x_train = load_scale_filter_data(
+    first_x_train = load_filter_data(
         start_m=months[0],
         end_m=months[1],
     )
