@@ -307,7 +307,7 @@ def update_cluster_objects_pool(state, month):
     })
 
 
-def create_new_month_clustering(state, x_train, scaler, current_month, metric):
+def create_new_month_clustering(state, x_train, scaler, current_month, metric, bw=None):
     """
     Create a new clustering model for the current month.
 
@@ -323,13 +323,13 @@ def create_new_month_clustering(state, x_train, scaler, current_month, metric):
         metric,
     )
 
-    # Important:
-    # Recompute cluster bandwidth for this specific month.
-    # Do not reuse h_cluster from the first month.
-    cluster_bandwidth = fit_cluster_kdes_with_mlcv_bandwidth(
+    if not bw:
+        cluster_bandwidth = fit_cluster_kdes_with_mlcv_bandwidth(
         x_train=x_train,
         km_labels=km_labels,
-    )
+        )
+    else:
+        cluster_bandwidth = bw
 
     cluster_kdes_for_month = compute_joint_kdes(
         x_train,
@@ -346,7 +346,7 @@ def create_new_month_clustering(state, x_train, scaler, current_month, metric):
     state["kmeans_objects_dict"][current_month] = kmeans
     state["ref_month"] = current_month
     state["stream_order"].append(current_month)
-
+    state["cluster_bw"] = cluster_bandwidth
     update_all_clusters_kde(state, current_month)
 
     return x_train
@@ -625,6 +625,7 @@ def run_dynamic_clustering(
             scaler=scaler,
             current_month=current_month,
             metric=metric,
+            bw=state["cluster_bw"],
         )
 
         compare_new_clusters_with_pool(

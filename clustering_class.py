@@ -6,6 +6,7 @@ def bic_score(x, labels):
     BIC score for the goodness of fit of clusters.
     This Python function is translated from the Golang implementation by the author of the paper.
     The original code is available here:
+
     https://github.com/bobhancock/goxmeans/blob/a78e909e374c6f97ddd04a239658c7c5b7365e5c/km.go#L778
     """
     from my_imports import np

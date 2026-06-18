@@ -291,7 +291,7 @@ def plot_cluster_relative_popularity(
     ax.grid(True, alpha=0.15, linewidth=0.5)
     ax.set_axisbelow(True)
 
-    cmap = cm.get_cmap(cmap_name)
+    cmap = plt.colormaps[cmap_name]
 
     # -------------------------------------------------------------
     # Plot each cluster-month block

@@ -286,7 +286,7 @@ def silverman_bandwidth(X):
 def find_mlcv_bandwidth(
         x_train,
         label_col=None,
-        sample_size=15000,
+        sample_size=None,
         bandwidths=None,
         cv=5,
         kernel="gaussian",
@@ -629,11 +629,12 @@ def run_cluster_threshold_sensitivity(
 
     return results
 
+
 def fit_cluster_kdes_with_mlcv_bandwidth(
         x_train,
         km_labels,
         label_col="labels",
-        n_eff_max=10000,
+        n_eff_max=None,
         bandwidths=None,
         cv=5,
         kernel="gaussian",
@@ -667,9 +668,10 @@ def fit_cluster_kdes_with_mlcv_bandwidth(
 
         scaler = StandardScaler()
         X_scaled_all = scaler.fit_transform(X)
-
-        n_eff = min(n_eff_max, len(X_scaled_all))
-
+        if n_eff_max:
+            n_eff = min(n_eff_max, len(X_scaled_all))
+        else:
+            n_eff = len(X_scaled_all)
         idx = rng.choice(
             len(X_scaled_all),
             size=n_eff,
@@ -692,3 +694,4 @@ def fit_cluster_kdes_with_mlcv_bandwidth(
             max_bandwidth = h_mlcv
 
     return max_bandwidth
+
