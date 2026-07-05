@@ -18,3 +18,23 @@ Cluster similarity analysis
 Cluster-level KDEs and JS distances are used to compare newly obtained clusters with previously stored clusters, allowing recurring patterns to retain consistent labels over time.
 
 The current implementation uses k-means clustering with k-means++ initialization. The number of clusters is selected using the Silhouette score.
+
+Repository structure
+EV_dynamic_clustering/
+├── main_01.ipynb
+├── clustering_class.py
+├── clustering_functions.py
+├── functions_kde_js.py
+├── plot_function_results.py
+├── LICENSE
+└── README.md
+main_01.ipynb
+Main notebook containing the workflow for the dynamic clustering analysis.
+clustering_class.py
+Custom k-means class and clustering-quality evaluation functions.
+clustering_functions.py
+Functions supporting data preparation, monthly processing, model creation, model reuse, and clustering workflow management.
+functions_kde_js.py
+KDE estimation, Jensen--Shannon distance calculation, drift detection, and cluster similarity functions.
+plot_function_results.py
+Functions for visual
