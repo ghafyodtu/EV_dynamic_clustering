@@ -1,4 +1,4 @@
-# Dynamic Clustering of Electric Vehicles Charging Sessions
+# ⚡ Dynamic Clustering of Electric Vehicle Charging Sessions
 
 This repository contains research code for a **dynamic, drift-aware clustering framework** for analyzing electric-vehicle (EV) charging behavior over time.
 
@@ -6,11 +6,11 @@ The framework processes charging data in consecutive monthly batches, monitors d
 
 ---
 
-## Method Overview
+## 🔄 Method Overview
 
 The workflow consists of four main steps.
 
-### 1. Monthly Data Preparation
+### 1. 📅 Monthly Data Preparation
 
 Charging sessions are grouped into monthly batches and prepared for analysis using features related to:
 
@@ -19,21 +19,21 @@ Charging sessions are grouped into monthly batches and prepared for analysis usi
 - Plug-in duration
 - Charging delay
 
-### 2. Distributional Drift Detection
+### 2. 📈 Distributional Drift Detection
 
 Kernel density estimation (KDE) is used to represent each monthly batch. Jensen–Shannon (JS) distance is then used to compare the current batch with reference distributions.
 
-### 3. Drift-Aware Clustering
+### 3. 🧠 Drift-Aware Clustering
 
 When a meaningful distributional change is detected, a new clustering model may be trained. Otherwise, an existing clustering model is reused.
 
-### 4. Cluster Similarity Analysis
+### 4. 🔗 Cluster Similarity Analysis
 
 Cluster-level KDEs and JS distances are used to compare newly obtained clusters with previously stored clusters, allowing recurring patterns to retain consistent labels over time.
 
 ---
 
-## Clustering Configuration
+## ⚙️ Clustering Configuration
 
 The current implementation uses:
 
@@ -43,7 +43,7 @@ The current implementation uses:
 
 ---
 
-## Repository Structure
+## 📁 Repository Structure
 
 ```text
 EV_dynamic_clustering/
@@ -57,7 +57,7 @@ EV_dynamic_clustering/
 └── README.md
 ```
 
-### File Description
+### 📄 File Description
 
 | File | Description |
 |------|-------------|
@@ -68,7 +68,11 @@ EV_dynamic_clustering/
 | `plot_function_results.py` | Visualization functions for clustering and drift analysis. |
 | `seed_fix.py` | Utility functions for setting random seeds to ensure reproducible experiments and consistent clustering results. |
 
-Python: 3.11.9
+---
+
+## 📦 Requirements
+
+**Python:** 3.11.9
 
 | Package | Version |
 |---|---|
@@ -79,20 +83,17 @@ Python: 3.11.9
 | scikit-learn | 1.7.1 |
 | scipy | 1.16.1 |
 
-##  License
+---
 
-This project is distributed under the MIT License. See the `LICENSE` file for details.
-
-
-## Dataset
+## 📊 Dataset
 
 This project uses the **ACN-Data** public EV charging dataset.
 
-## Citation
+---
+
+## 📖 Citation
 
 If you use the ACN-Data dataset, please cite:
-
----
 
 ```bibtex
 @inproceedings{lee_acndata_2019,
@@ -104,4 +105,10 @@ If you use the ACN-Data dataset, please cite:
   year = {2019},
   location = {Phoenix, Arizona}
 }
+```
 
+---
+
+## 📄 License
+
+This project is distributed under the MIT License. See the `LICENSE` file for details.
