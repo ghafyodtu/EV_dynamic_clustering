@@ -35,6 +35,7 @@ def compute_joint_kdes(data, bandwidth, labels=None):
 
     return kdes
 
+
 def compute_js_divergence(kde1, kde2, num_samples=3000):
     """
     Compute JS Divergence between two multi-dimensional KDEs using a fixed grid.
@@ -158,9 +159,9 @@ def create_months(start, end):
     return months
 
 
-def read_scale_monthly_kde(scaler, m1, m2, band_width_):
+def read_scale_monthly_kde(scaler, m1, m2, band_width_, zone):
     from clustering_functions import load_filter_data
-    x_train = load_filter_data(start_m=m1, end_m=m2)
+    x_train = load_filter_data(start_m=m1, end_m=m2, zone=zone)
     x_train1 = scaler.transform(x_train)
     x_train = pd.DataFrame(x_train1, columns=x_train.columns)
     # create kde of month i
@@ -168,9 +169,9 @@ def read_scale_monthly_kde(scaler, m1, m2, band_width_):
     return x_train, monthly_kde_
 
 
-def read_scale_monthly_kde_mD(scaler, m1, m2, band_width_):
+def read_scale_monthly_kde_mD(scaler, m1, m2, band_width_, zone):
     from clustering_functions import load_filter_data
-    x_train = load_filter_data(start_m=m1, end_m=m2)
+    x_train = load_filter_data(start_m=m1, end_m=m2, zone=zone)
     x_train1 = scaler.transform(x_train)
     x_train = pd.DataFrame(x_train1, columns=x_train.columns)
     # create kde of month i
@@ -348,6 +349,7 @@ def find_mlcv_bandwidth(
     )
     grid.fit(X_scaled)
     h_mlcv = grid.best_params_["bandwidth"]
+
     return h_mlcv, grid, scaler
 
 
@@ -357,6 +359,7 @@ def run_md_sensitivity_analysis(
         js_thr_val_list=None,
         n_js_samples=500,
         plot=True,
+        zone='Europe/Copenhagen',
 ):
     """
     Run sensitivity analysis for MD drift detection over different JS thresholds.
@@ -379,6 +382,9 @@ def run_md_sensitivity_analysis(
     plot : bool
         Whether to plot threshold vs number of detected drifts.
 
+    zone : str
+        time zone of the dataset.
+
     Returns
     -------
     results : dict
@@ -390,7 +396,7 @@ def run_md_sensitivity_analysis(
     from my_imports import StandardScaler, np
     from clustering_functions import load_filter_data
     if js_thr_val_list is None:
-        js_thr_val_list = [round(x, 2) for x in np.arange(0.06, 0.26, 0.02)]
+        js_thr_val_list = [round(x, 2) for x in np.arange(0.06, 0.36, 0.02)]
 
     number_of_drifts_list = []
     details_per_threshold = {}
@@ -410,7 +416,8 @@ def run_md_sensitivity_analysis(
         scaler = StandardScaler()
         x_train_first = load_filter_data(
             start_m=months[0],
-            end_m=months[1]
+            end_m=months[1],
+            zone=zone
         )
         _ = scaler.fit(x_train_first)
         # Bandwidth selection
@@ -428,14 +435,15 @@ def run_md_sensitivity_analysis(
                 scaler,
                 current_month_pair[0],
                 current_month_pair[1],
-                band_width
+                band_width, zone=zone
             )
 
             _, monthly_kde_mD[current_month] = read_scale_monthly_kde_mD(
                 scaler,
                 current_month_pair[0],
                 current_month_pair[1],
-                band_width
+                band_width,
+                zone=zone
             )
 
             if current_month == global_start_date:
@@ -502,7 +510,7 @@ def run_md_sensitivity_analysis(
         plt.ylabel("Number of Detected Drifts")
         plt.grid(True)
         plt.tight_layout()
-        plt.xticks(np.arange(0.04, 0.28, 0.02))
+        #plt.xticks(np.arange(0.04, 0.28, 0.02))
         plt.yticks(np.arange(0, max(number_of_drifts_list) + 1, 2))
         plt.show()
 
@@ -550,7 +558,7 @@ def run_cluster_threshold_sensitivity(
     """
     from my_imports import np, plt
     if thresholds is None:
-        thresholds = [round(x, 2) for x in np.arange(0.10, 0.25, 0.01)]
+        thresholds = [round(x, 2) for x in np.arange(0.10, 0.45, 0.01)]
 
     clusters = []
     details_per_threshold = {}
@@ -649,7 +657,7 @@ def fit_cluster_kdes_with_mlcv_bandwidth(
     from sklearn.neighbors import KernelDensity
     from sklearn.model_selection import GridSearchCV
     if bandwidths is None:
-        bandwidths = np.arange(0.02, 0.201, 0.02)
+        bandwidths = np.arange(0.02, 0.401, 0.02)
 
     # Copy so the original x_train is not modified
     x_train_labeled = x_train.copy()

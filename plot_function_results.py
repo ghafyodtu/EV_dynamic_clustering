@@ -1,10 +1,10 @@
 
-def drift_plot_v2(js_per_feature_mat, js_mat_time_order, end_date, drift_months):
+def drift_plot_v2(js_per_feature_mat, js_mat_time_order, end_date):
     """
     :param js_per_feature_mat: per-feature JS values.
     :param js_mat_time_order: list of month labels in JS order.
     :param end_date: last x-axis label for step plot.
-    :param drift_months: list of month labels OR indices where drift happens (same for all features).
+
     """
     from my_imports import np, plt
 
@@ -27,12 +27,7 @@ def drift_plot_v2(js_per_feature_mat, js_mat_time_order, end_date, drift_months)
 
     # Normalize drift_months input into indices
     drift_indices = []
-    for dm in drift_months:
-        if isinstance(dm, str):      # if user passes month labels
-            if dm in x_months:
-                drift_indices.append(x_months.index(dm))
-        else:                         # if user passes indices
-            drift_indices.append(dm)
+
     drift_indices = np.array(drift_indices)
 
     features = ['plugin_duration', 'plugin_hour_sine', 'plugin_hour_cosine', 'energy', 'delay']
@@ -59,10 +54,7 @@ def drift_plot_v2(js_per_feature_mat, js_mat_time_order, end_date, drift_months)
         # Step plot
         ax.step(extended_month_indices, extended_js_values, where='post', linestyle='-', marker='')
 
-        # Add red drift dots (same positions for all features)
-        ax.plot(drift_indices + 0.5,
-                js_values[drift_indices, i],
-                'ro', markersize=5, label="Drift Event")
+
 
         ax.set_title(feature_name[i])
         ax.set_ylabel("")
@@ -176,7 +168,7 @@ def plot_cluster_relative_popularity(
     relative_popularity_dict,
     figsize=(10, 5),
     cmap_name="Blues",
-    tick_values=(5, 10, 15, 20, 25, 30),
+    tick_values=None, #(5, 10, 15, 20, 25, 30),
     show=True,
 ):
     """
@@ -329,7 +321,7 @@ def plot_cluster_relative_popularity(
 
     ax.set_xlabel("Month")
     ax.set_ylabel("Cluster")
-
+    ax.set_title("Cluster popularity figure")
     # -------------------------------------------------------------
     # Add colorbar
     # -------------------------------------------------------------
@@ -338,10 +330,10 @@ def plot_cluster_relative_popularity(
     scalar_mappable.set_array([])
 
     cbar = plt.colorbar(scalar_mappable, ax=ax)
-
-    tick_values = np.array(tick_values)
-    cbar.set_ticks(tick_values / 100)
-    cbar.set_ticklabels([f"{v}%" for v in tick_values])
+    if tick_values:
+        tick_values = np.array(tick_values)
+        cbar.set_ticks(tick_values / 100)
+        cbar.set_ticklabels([f"{v}%" for v in tick_values])
 
     plt.tight_layout()
 

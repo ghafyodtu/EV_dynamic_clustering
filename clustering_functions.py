@@ -10,38 +10,40 @@ from functions_kde_js import (compute_joint_kdes, compute_js_divergence, categor
                               run_md_sensitivity_analysis, run_cluster_threshold_sensitivity,
                               fit_cluster_kdes_with_mlcv_bandwidth)
 
-def primary_interval_filter(df1, start_date="01-2023", end_date="02-2023"):
+
+def primary_interval_filter(df1, start_date="01-2023", end_date="02-2023", zone='Europe/Copenhagen'):
     """
     This function keeps the time interval needed for the clustering.
     It adds "year_month" and "weekend" columns to the dataframe.
     :param df1: data_frame
     :param start_date: start month (first timestamp of the month)
     :param end_date: end month (first timestamp of the month)
+    :param zone: dataset timezone.
     :return: Dataframe within certain start and end time.
     """
     from datetime import datetime, timedelta
     import pytz
     import holidays
     df1 = df1.copy()
-    df1 = df1.drop(columns=["mean_power", "max_power", "end_charge"])
+    df1 = df1.drop(columns=["mean_power", "max_power", "end_charge"], errors="ignore")
     df1 = df1.rename(columns={"percentile_90": "power"})
     # Define the time zones
-    denmark = pytz.timezone('Europe/Copenhagen')
+    zone_ = pytz.timezone(zone)
     # print(df1['plugin'].dtype, "The initial time zone of the dataframe")
     # Convert the 'plugin' and 'plugout' and "start_charge" columns to UTC
     df1[['plugin', 'plugout', 'start_charge']] = df1[['plugin', 'plugout', 'start_charge']].apply(
         lambda col: pd.to_datetime(col, utc=True))
     # Convert the 'plugin' and 'plugout' and "start_charge" columns to Denmark time
     df1[['plugin', 'plugout', 'start_charge']] = df1[['plugin', 'plugout', 'start_charge']].apply(
-        lambda col: col.dt.tz_convert(denmark))
+        lambda col: col.dt.tz_convert(zone_))
     # Sort the dataframe by 'CBID' and 'plugin' columns
     df1 = df1.sort_values(by=['CBID', 'plugin'])
     # Parse the start and end dates in Denmark time
     start_date = datetime.strptime(start_date, "%m-%Y")
     end_date = datetime.strptime(end_date, "%m-%Y")
     # Set the timezone for start and end dates to Denmark time
-    start_date = denmark.localize(start_date) + timedelta(seconds=1)
-    end_date = denmark.localize(end_date) - timedelta(seconds=1)  # Adjust end date to the end of the month
+    start_date = zone_.localize(start_date) + timedelta(seconds=1)
+    end_date = zone_.localize(end_date) - timedelta(seconds=1)  # Adjust end date to the end of the month
     # Print the start and end dates in Denmark time
     # print(
     #     f"{start_date} is the start date of the dataset (Denmark time)\n{end_date}"
@@ -50,11 +52,7 @@ def primary_interval_filter(df1, start_date="01-2023", end_date="02-2023"):
     df1 = df1[(df1['plugin'] >= start_date) & (df1['plugout'] <= end_date)]
     df1['year_month'] = df1['plugin'].dt.to_period('M').astype(str)
     df1['weekend'] = (df1['start_charge'].dt.weekday >= 5).astype("int32")
-    # Use the holidays library to fetch Denmark's holidays for the given period
-    dk_holidays = holidays.country_holidays('DK')
-    df1['holiday'] = df1['start_charge'].dt.date.apply(lambda x: 1 if x in dk_holidays else 0)
-    df1['holiday'] = (df1['holiday'] | df1['weekend']).astype("int32")
-    # Reset the index of the filtered dataframe
+
     # print(df1['plugin'].dtype, "The time zone of the dataframe")
     df1 = df1.reset_index(drop=True)
     return df1
@@ -101,9 +99,10 @@ def filter_outlier_per_feature(df1, quantiles):
     a1 = len(df1)
     # print(a1, "size of dataset before outlier removal")
     for column, (low, high) in quantiles.items():
-        low_thresh = df1[column].quantile(low)
-        high_thresh = df1[column].quantile(high)
-        df1 = df1[(df1[column] >= low_thresh) & (df1[column] <= high_thresh)]
+        if column in df1.columns:
+            low_thresh = df1[column].quantile(low)
+            high_thresh = df1[column].quantile(high)
+            df1 = df1[(df1[column] >= low_thresh) & (df1[column] <= high_thresh)]
     a2 = len(df1)
     # print(a1 - a2, "Number of outlier sessions removed.")
     # df1 = df1[df1.plugin_duration < 30]
@@ -150,11 +149,11 @@ def feature_scaling(df1, cols1_):
     return df1
 
 
-def load_filter_data(start_m, end_m):
+def load_filter_data(start_m, end_m, zone='Europe/Copenhagen'):
     cols = ['plugin_duration', "plugin_hour_sine", "plugin_hour_cosine", "energy", "delay"]
     cols_ = [col + "_sc" for col in cols]
-    dfo = pd.read_parquet("Data/EV_data_full_v2.parquet")
-    df = primary_interval_filter(dfo, start_date=start_m, end_date=end_m)
+    dfo = pd.read_parquet("Data/test_ACN_data.parquet")
+    df = primary_interval_filter(dfo, start_date=start_m, end_date=end_m, zone=zone)
     df = delay_threshold(df, delay_thr=0.0)
     df = add_hour(df)
     quantiles = {
@@ -162,7 +161,8 @@ def load_filter_data(start_m, end_m):
         'plugin_duration': (0.01, 0.95),
         'free_time': (0.00, 1.00),
         'delay': (0.00, 0.95)}
-    df = filter_outlier_per_feature(df, quantiles)
+    if zone != "America/Los_Angeles": # ACN data is already filtered, no need to secondary reprocess.
+        df = filter_outlier_per_feature(df, quantiles)
     df = keep_columns(df, cols)
     return df
 
@@ -174,7 +174,7 @@ def clustering_process(x_train, scaler, current_month, metric):
     _ = km_scaler.fit(scaler.inverse_transform(x_train))
     x_train_km = km_scaler.transform(scaler.inverse_transform(x_train))
     x_train_km = pd.DataFrame(x_train_km, columns=x_train.columns)
-    kmeans.clustering_evaluation(x_train_km.sample(n=int(x_train_km.shape[0]*0.5), random_state=42), 5, 10, metrics=["silhouette"])
+    kmeans.clustering_evaluation(x_train_km.sample(n=int(x_train_km.shape[0]*0.99), random_state=42), 2, 5, metrics=["silhouette"])
     plot_evaluation_metrics(kmeans, month=current_month)
     kmeans.n_clusters, metric_value = max(kmeans.evaluation_metrics[metric], key=lambda x: x[1])
     print(f"{kmeans.n_clusters}, Number of Optimal Clusters for Month {current_month}")
@@ -226,7 +226,7 @@ def rename_cluster_keys(cluster_kdes_for_month, month):
     }
 
 
-def load_current_month_kdes(state, scaler, current_month, next_month, bandwidth):
+def load_current_month_kdes(state, scaler, current_month, next_month, bandwidth, zone):
     """
     Load scaled monthly data and compute:
     1. feature-wise KDEs
@@ -238,6 +238,7 @@ def load_current_month_kdes(state, scaler, current_month, next_month, bandwidth)
         current_month,
         next_month,
         bandwidth,
+        zone
     )
 
     _, kde_mD = read_scale_monthly_kde_mD(
@@ -245,6 +246,7 @@ def load_current_month_kdes(state, scaler, current_month, next_month, bandwidth)
         current_month,
         next_month,
         bandwidth,
+        zone
     )
 
     state["monthly_kde"][current_month] = kde_1d
@@ -462,8 +464,9 @@ def compare_new_clusters_with_pool(
 # ---------------------------------------------------------------------
 
 def run_dynamic_clustering(
-    global_start_date,
-    global_end_date,
+    global_start_date="01-2023",
+    global_end_date="01-2025",
+    zone='Europe/Copenhagen',
     metric="silhouette",
     js_lim_month=0.18,
     js_lim_cluster=0.18,
@@ -493,6 +496,7 @@ def run_dynamic_clustering(
     first_x_train = load_filter_data(
         start_m=months[0],
         end_m=months[1],
+        zone=zone
     )
 
     monthly_bandwidth, _, _ = find_mlcv_bandwidth(first_x_train)
@@ -511,6 +515,7 @@ def run_dynamic_clustering(
             current_month=current_month,
             next_month=next_month,
             bandwidth=monthly_bandwidth,
+            zone=zone
         )
 
         # -------------------------------------------------------------
