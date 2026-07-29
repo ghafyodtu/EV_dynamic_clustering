@@ -52,9 +52,11 @@ EV_dynamic_clustering/
 ├── clustering_functions.py
 ├── functions_kde_js.py
 ├── plot_function_results.py
+├── seed_fix.py
 ├── LICENSE
 └── README.md
 ```
+
 ### File Description
 
 | File | Description |
@@ -64,7 +66,7 @@ EV_dynamic_clustering/
 | `clustering_functions.py` | Data preparation, monthly processing, model creation, model reuse, and workflow management. |
 | `functions_kde_js.py` | KDE estimation, Jensen–Shannon distance calculation, drift detection, and cluster similarity analysis. |
 | `plot_function_results.py` | Visualization functions for clustering and drift analysis. |
-
+| `seed_fix.py` | Utility functions for setting random seeds to ensure reproducible experiments and consistent clustering results. |
 
 Python: 3.11.9
 
