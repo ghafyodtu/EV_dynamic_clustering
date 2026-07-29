@@ -90,6 +90,8 @@ This project uses the **ACN-Data** public EV charging dataset.
 
 If you use the ACN-Data dataset, please cite:
 
+---
+
 ```bibtex
 @inproceedings{lee_acndata_2019,
   author = {Lee, Zachary J. and Li, Tongxin and Low, Steven H.},
@@ -100,5 +102,4 @@ If you use the ACN-Data dataset, please cite:
   year = {2019},
   location = {Phoenix, Arizona}
 }
-
 
