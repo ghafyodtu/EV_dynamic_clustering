@@ -383,7 +383,7 @@ def run_md_sensitivity_analysis(
         Whether to plot threshold vs number of detected drifts.
 
     zone : str
-        time zone of the dataset.
+        time zone of the dataset or dataset identification name.
 
     Returns
     -------

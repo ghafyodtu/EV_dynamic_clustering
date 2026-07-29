@@ -37,4 +37,16 @@ Functions supporting data preparation, monthly processing, model creation, model
 functions_kde_js.py
 KDE estimation, Jensen--Shannon distance calculation, drift detection, and cluster similarity functions.
 plot_function_results.py
-Functions for visual
+Functions for visualization. 
+
+
+Python: 3.11.9
+
+| Package | Version |
+|---|---|
+| numpy | 2.1.3 |
+| pandas | 2.3.1 |
+| matplotlib | 3.10.8 |
+| seaborn | 0.13.2 |
+| scikit-learn | 1.7.1 |
+| scipy | 1.16.1 |

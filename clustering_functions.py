@@ -28,6 +28,8 @@ def primary_interval_filter(df1, start_date="01-2023", end_date="02-2023", zone=
     df1 = df1.drop(columns=["mean_power", "max_power", "end_charge"], errors="ignore")
     df1 = df1.rename(columns={"percentile_90": "power"})
     # Define the time zones
+    if zone == "America/Los_Angeles_ACN":
+        zone = "America/Los_Angeles"
     zone_ = pytz.timezone(zone)
     # print(df1['plugin'].dtype, "The initial time zone of the dataframe")
     # Convert the 'plugin' and 'plugout' and "start_charge" columns to UTC
@@ -161,7 +163,7 @@ def load_filter_data(start_m, end_m, zone='Europe/Copenhagen'):
         'plugin_duration': (0.01, 0.95),
         'free_time': (0.00, 1.00),
         'delay': (0.00, 0.95)}
-    if zone != "America/Los_Angeles": # ACN data is already filtered, no need to secondary reprocess.
+    if zone != "America/Los_Angeles_ACN": # ACN data is already filtered, no need to secondary reprocess.
         df = filter_outlier_per_feature(df, quantiles)
     df = keep_columns(df, cols)
     return df
