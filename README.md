@@ -1,4 +1,4 @@
-# EV Dynamic Clustering
+# Dynamic Clustering of Electric Vehicles Charging Sessions
 
 This repository contains research code for a **dynamic, drift-aware clustering framework** for analyzing electric-vehicle (EV) charging behavior over time.
 
