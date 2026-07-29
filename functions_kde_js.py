@@ -159,9 +159,9 @@ def create_months(start, end):
     return months
 
 
-def read_scale_monthly_kde(scaler, m1, m2, band_width_, zone):
+def read_scale_monthly_kde(scaler, m1, m2, band_width_,path, zone):
     from clustering_functions import load_filter_data
-    x_train = load_filter_data(start_m=m1, end_m=m2, zone=zone)
+    x_train = load_filter_data(start_m=m1, end_m=m2,path=path, zone=zone)
     x_train1 = scaler.transform(x_train)
     x_train = pd.DataFrame(x_train1, columns=x_train.columns)
     # create kde of month i
@@ -169,9 +169,9 @@ def read_scale_monthly_kde(scaler, m1, m2, band_width_, zone):
     return x_train, monthly_kde_
 
 
-def read_scale_monthly_kde_mD(scaler, m1, m2, band_width_, zone):
+def read_scale_monthly_kde_mD(scaler, m1, m2, band_width_,path, zone):
     from clustering_functions import load_filter_data
-    x_train = load_filter_data(start_m=m1, end_m=m2, zone=zone)
+    x_train = load_filter_data(start_m=m1, end_m=m2, path=path, zone=zone)
     x_train1 = scaler.transform(x_train)
     x_train = pd.DataFrame(x_train1, columns=x_train.columns)
     # create kde of month i
@@ -360,6 +360,7 @@ def run_md_sensitivity_analysis(
         n_js_samples=500,
         plot=True,
         zone='Europe/Copenhagen',
+        file_path="data/test_ACN_data.parquet",
 ):
     """
     Run sensitivity analysis for MD drift detection over different JS thresholds.
@@ -384,6 +385,8 @@ def run_md_sensitivity_analysis(
 
     zone : str
         time zone of the dataset or dataset identification name.
+    file_path : str
+        file path string.
 
     Returns
     -------
@@ -417,6 +420,7 @@ def run_md_sensitivity_analysis(
         x_train_first = load_filter_data(
             start_m=months[0],
             end_m=months[1],
+            path=file_path,
             zone=zone
         )
         _ = scaler.fit(x_train_first)
@@ -435,7 +439,7 @@ def run_md_sensitivity_analysis(
                 scaler,
                 current_month_pair[0],
                 current_month_pair[1],
-                band_width, zone=zone
+                band_width, zone=zone, path=file_path
             )
 
             _, monthly_kde_mD[current_month] = read_scale_monthly_kde_mD(
@@ -443,7 +447,7 @@ def run_md_sensitivity_analysis(
                 current_month_pair[0],
                 current_month_pair[1],
                 band_width,
-                zone=zone
+                zone=zone, path=file_path
             )
 
             if current_month == global_start_date:

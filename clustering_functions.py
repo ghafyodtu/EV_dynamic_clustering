@@ -151,10 +151,10 @@ def feature_scaling(df1, cols1_):
     return df1
 
 
-def load_filter_data(start_m, end_m, zone='Europe/Copenhagen'):
+def load_filter_data(start_m, end_m, path, zone='Europe/Copenhagen'):
     cols = ['plugin_duration', "plugin_hour_sine", "plugin_hour_cosine", "energy", "delay"]
     cols_ = [col + "_sc" for col in cols]
-    dfo = pd.read_parquet("Data/test_ACN_data.parquet")
+    dfo = pd.read_parquet(path)
     df = primary_interval_filter(dfo, start_date=start_m, end_date=end_m, zone=zone)
     df = delay_threshold(df, delay_thr=0.0)
     df = add_hour(df)
@@ -228,7 +228,7 @@ def rename_cluster_keys(cluster_kdes_for_month, month):
     }
 
 
-def load_current_month_kdes(state, scaler, current_month, next_month, bandwidth, zone):
+def load_current_month_kdes(state, scaler, current_month, next_month, bandwidth, path, zone):
     """
     Load scaled monthly data and compute:
     1. feature-wise KDEs
@@ -240,6 +240,7 @@ def load_current_month_kdes(state, scaler, current_month, next_month, bandwidth,
         current_month,
         next_month,
         bandwidth,
+        path,
         zone
     )
 
@@ -248,6 +249,7 @@ def load_current_month_kdes(state, scaler, current_month, next_month, bandwidth,
         current_month,
         next_month,
         bandwidth,
+        path,
         zone
     )
 
@@ -473,6 +475,7 @@ def run_dynamic_clustering(
     js_lim_month=0.18,
     js_lim_cluster=0.18,
     js_sample_size=1000,
+    file_path="data/test_ACN_data.parquet",
 ):
     """
     Main dynamic clustering pipeline.
@@ -498,6 +501,7 @@ def run_dynamic_clustering(
     first_x_train = load_filter_data(
         start_m=months[0],
         end_m=months[1],
+        path=file_path,
         zone=zone
     )
 
@@ -517,6 +521,7 @@ def run_dynamic_clustering(
             current_month=current_month,
             next_month=next_month,
             bandwidth=monthly_bandwidth,
+            path=file_path,
             zone=zone
         )
 
