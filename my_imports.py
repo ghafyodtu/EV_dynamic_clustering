@@ -11,6 +11,7 @@ from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_har
 from sklearn.metrics import adjusted_rand_score, accuracy_score
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
 
+
 def plot1_params(fsize1_=10, dpi1_=200, font1_="Palatino Linotype"):
 
     plt.rcParams['font.family'] = font1_

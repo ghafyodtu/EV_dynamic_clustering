@@ -1,4 +1,4 @@
-from my_imports import pd
+from my_imports import pd, np
 import copy
 
 
@@ -115,8 +115,6 @@ def compute_js_divergence_mD(kde1, kde2, num_samples=3000):
     prob1 /= prob1.sum()
     prob2 /= prob2.sum()
     return jensenshannon(prob1, prob2)
-
-
 
 
 def create_joint_similarity_matrix(kdes1, kdes2, num_points):
@@ -248,7 +246,7 @@ def scott_bandwidth(X):
     bw_isotropic : float
         Single scalar bandwidth using RMS(std) * factor (good for isotropic KDE).
     """
-    import numpy as np
+
     X = _as_2d(X)
     n, d = X.shape
     if n < 2:
@@ -272,7 +270,7 @@ def silverman_bandwidth(X):
     bw_isotropic : float
         Single scalar bandwidth using RMS(std) * factor (good for isotropic KDE).
     """
-    import numpy as np
+
     X = _as_2d(X)
     n, d = X.shape
     if n < 2:
@@ -327,7 +325,7 @@ def find_mlcv_bandwidth(
     from sklearn.neighbors import KernelDensity
     from sklearn.model_selection import GridSearchCV
     from sklearn.preprocessing import StandardScaler
-    from my_imports import np
+
     if bandwidths is None:
         bandwidths = np.arange(0.04, 0.261, 0.02)
     # Remove labels column
@@ -396,7 +394,7 @@ def run_md_sensitivity_analysis(
         - "number_of_drifts_list"
         - "details_per_threshold"
     """
-    from my_imports import StandardScaler, np
+    from my_imports import StandardScaler
     from clustering_functions import load_filter_data
     if js_thr_val_list is None:
         js_thr_val_list = [round(x, 2) for x in np.arange(0.06, 0.36, 0.02)]
@@ -560,7 +558,7 @@ def run_cluster_threshold_sensitivity(
         - "clusters"
         - "details_per_threshold"
     """
-    from my_imports import np, plt
+    from my_imports import plt
     if thresholds is None:
         thresholds = [round(x, 2) for x in np.arange(0.10, 0.45, 0.01)]
 
@@ -657,7 +655,7 @@ def fit_cluster_kdes_with_mlcv_bandwidth(
     Append cluster labels to x_train internally, select MLCV bandwidth
     per cluster/label, and return only the maximum bandwidth.
     """
-    from my_imports import StandardScaler, np
+    from my_imports import StandardScaler
     from sklearn.neighbors import KernelDensity
     from sklearn.model_selection import GridSearchCV
     if bandwidths is None:

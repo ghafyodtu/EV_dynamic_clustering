@@ -1,13 +1,11 @@
-from my_imports import pd, np, plt, sns, StandardScaler
+from my_imports import pd, np, StandardScaler
 import copy
-import pytz
 from clustering_class import KmeansC, plot_evaluation_metrics
 from functions_kde_js import (compute_joint_kdes, compute_js_divergence, categorize_count,
                               cluster_similarity_analysis,
                               compute_js_divergence_mD, create_months,
                               read_scale_monthly_kde_mD, read_scale_monthly_kde,
                               create_joint_similarity_matrix, find_mlcv_bandwidth,
-                              run_md_sensitivity_analysis, run_cluster_threshold_sensitivity,
                               fit_cluster_kdes_with_mlcv_bandwidth)
 
 
@@ -98,17 +96,14 @@ def filter_outlier_per_feature(df1, quantiles):
                       Example: {'energy': (0.01, 0.99), 'plugin_duration': (0.01, 0.95)}
     :return: Filtered dataframe with outliers removed.
     """
-    a1 = len(df1)
+
     # print(a1, "size of dataset before outlier removal")
     for column, (low, high) in quantiles.items():
         if column in df1.columns:
             low_thresh = df1[column].quantile(low)
             high_thresh = df1[column].quantile(high)
             df1 = df1[(df1[column] >= low_thresh) & (df1[column] <= high_thresh)]
-    a2 = len(df1)
-    # print(a1 - a2, "Number of outlier sessions removed.")
-    # df1 = df1[df1.plugin_duration < 30]
-    # df1 = df1[df1.plugin_duration > 0.5]
+
     df1.reset_index(drop=True)
     return df1
 
@@ -620,7 +615,6 @@ def run_dynamic_clustering(
             )
 
             continue
-
         # -------------------------------------------------------------
         # Case 3:
         # Current month is different from all known previous months.
@@ -646,6 +640,5 @@ def run_dynamic_clustering(
             js_lim_cluster=js_lim_cluster,
             sample_size=js_sample_size,
         )
-
     return state
 
