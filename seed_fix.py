@@ -1,8 +1,6 @@
-def set_seeds():
-    from my_imports import rnd_, np, tf
+def set_seeds(seed=42):
+    from my_imports import rnd_, np
     # Set the seed for Python's built-in random module
-    rnd_.seed(42)
+    rnd_.seed(seed)
     # Set the seed for NumPy
-    np.random.seed(42)
-    # Set the seed for TensorFlow
-    tf.random.set_seed(42)
+    np.random.seed(seed)
